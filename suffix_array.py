@@ -17,4 +17,6 @@ def suffix_array(suffix_tree):
 	edge_chars = [i[0] for i in root.get_edges().items()]
 	edge_chars.sort()
 
+	print "-------------------------------------"
+	print root.get_edges()
 	print edge_chars
