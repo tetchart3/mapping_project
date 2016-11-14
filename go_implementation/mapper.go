@@ -1,6 +1,10 @@
 package main
 
-import "sort"
+import (
+	"sort"
+	"os"
+	"bufio"
+)
 
 // Copyright 2011 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -32,7 +36,26 @@ type Mapper struct {
 	firstOccurance map[rune]int
 }
 
-func CreateMapper(reference string) Mapper {
+func CreateMapper(referenceFile string) Mapper {
+
+	f1, err1 := os.Open(referenceFile)
+	if err1 != nil {
+		panic(err1)
+	}
+	defer f1.Close()
+
+	reference := ""
+
+	scanner := bufio.NewScanner(f1)
+	scanner.Split(bufio.ScanLines)
+	scanner.Scan()
+	// header := scanner.Text()
+	for scanner.Scan() {
+		reference += scanner.Text()
+	}
+
+	reference += "$"
+
 	sa := qsufsort([]byte(reference))
 
 	bwt := make([]rune, len(reference))
