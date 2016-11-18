@@ -39,7 +39,7 @@ func (sw *SamWriter) Done() {
 func (sw *SamWriter) WriteLine(qname string, rname string, start int, qseq string, rseq string) {
 	var cigar string
 	var flag int
-	if len(qseq) == 0 {
+	if len(rseq) == 0 {
 		cigar = "*"
 		flag = 4
 	} else {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"sync"
 )
 
@@ -49,53 +48,29 @@ func main() {
 	go writer.WriteSam()
 	unmappedReads := 0
 	reverseReads := 0
+	avgAgreement := 0
 	i := 0
 	read, done := parser.GetRead()
 	for !done {
 		wg.Add(1)
 		currentRead := Read{read.name, read.seq}
-		go analyzeRead(&mapper, &writer, &currentRead, k, &unmappedReads, &reverseReads, &wg)
-		// go func() {
-		// var bestStart int
-		// forwardStart, forwardAgreement := findStart(&mapper, read, k)
-		// if forwardAgreement < (len(read.seq)-k)/3 {
-		// 	revRead := read.ReverseCompliment()
-		// 	reverseStart, reverseAgreement := findStart(&mapper, revRead, k)
+		go analyzeRead(&mapper, &writer, &currentRead, k, &unmappedReads, &reverseReads, &avgAgreement, &wg)
 
-		// 	if forwardAgreement > reverseAgreement {
-		// 		bestStart = forwardStart
-		// 	} else {
-		// 		bestStart = reverseStart
-		// 		reverseReads++
-		// 	}
-		// } else {
-		// 	bestStart = forwardStart
-		// }
-
-		// if bestStart >= 0 {
-		// 	writer.WriteLine(read.name, mapper.referenceName, bestStart, read.seq, mapper.reference[bestStart:bestStart+len(read.seq)])
-		// } else {
-		// 	writer.WriteLine(read.name, "", 0, read.seq, "")
-		// 	unmappedReads++
-		// }
-		// wg.Done()
-		// }()
-		// fmt.Println(mapper.findOccurances(read.seq))
-		// fmt.Println(indices)
-		if (i % (runtime.NumCPU() * 100)) == 0 {
+		if (i % (runtime.NumCPU() * 2)) == 0 {
 			wg.Wait()
 		}
+		i++
 		read, done = parser.GetRead()
 	}
 	wg.Wait()
 	parser.Close()
 	writer.Done()
-	fmt.Println(strconv.Itoa(unmappedReads) + " unmapped reads.")
-	fmt.Println(strconv.Itoa(reverseReads) + " reverse reads.")
-
+	fmt.Println(unmappedReads, "unmapped reads.")
+	fmt.Println(reverseReads, "reverse reads.")
+	fmt.Println(avgAgreement/i, "average agreement")
 }
 
-func analyzeRead(mapper *Mapper, writer *SamWriter, read *Read, k int, unmappedReads *int, reverseReads *int, wg *sync.WaitGroup) {
+func analyzeRead(mapper *Mapper, writer *SamWriter, read *Read, k int, unmappedReads *int, reverseReads *int, avgAgreement *int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var bestStart int
 	forwardStart, forwardAgreement := findStart(mapper, *read, k)
@@ -105,18 +80,22 @@ func analyzeRead(mapper *Mapper, writer *SamWriter, read *Read, k int, unmappedR
 
 		if forwardAgreement > reverseAgreement {
 			bestStart = forwardStart
+			*avgAgreement += forwardAgreement
 		} else {
 			bestStart = reverseStart
 			*reverseReads++
+			*avgAgreement += reverseAgreement
+
 		}
 	} else {
 		bestStart = forwardStart
+		*avgAgreement += forwardAgreement
 	}
 
 	if bestStart >= 0 && (bestStart+len(read.seq)) < len(mapper.reference)-1 {
 		writer.WriteLine(read.name, mapper.referenceName, bestStart, read.seq, mapper.reference[bestStart:bestStart+len(read.seq)])
 	} else {
-		writer.WriteLine(read.name, "", 0, read.seq, "")
+		writer.WriteLine(read.name, "*", -1, read.seq, "")
 		*unmappedReads++
 	}
 }
