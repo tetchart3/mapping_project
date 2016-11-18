@@ -1,9 +1,10 @@
 package main
 
 import (
-	"sort"
-	"os"
 	"bufio"
+	"os"
+	"sort"
+	"strings"
 )
 
 // Copyright 2011 The Go Authors. All rights reserved.
@@ -33,6 +34,8 @@ import (
 type Mapper struct {
 	sa             []int
 	counts         []map[rune]int
+	reference      string
+	referenceName  string
 	firstOccurance map[rune]int
 }
 
@@ -49,12 +52,14 @@ func CreateMapper(referenceFile string) Mapper {
 	scanner := bufio.NewScanner(f1)
 	scanner.Split(bufio.ScanLines)
 	scanner.Scan()
-	// header := scanner.Text()
+	header := scanner.Text()
 	for scanner.Scan() {
 		reference += scanner.Text()
 	}
 
 	reference += "$"
+
+	reference = strings.ToUpper(reference)
 
 	sa := qsufsort([]byte(reference))
 
@@ -95,7 +100,7 @@ func CreateMapper(referenceFile string) Mapper {
 			}
 		}
 	}
-	return Mapper{sa, counts, firstOccurance}
+	return Mapper{sa, counts, reference, header[1:], firstOccurance}
 }
 
 func (m *Mapper) findOccurances(search string) []int {
